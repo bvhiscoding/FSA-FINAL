@@ -221,12 +221,7 @@ export function TopBar() {
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
 
-        <button
-          aria-label="Settings"
-          className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer"
-        >
-          <Settings size={15} />
-        </button>
+
       </div>
     </header>
   );

@@ -21,6 +21,21 @@ import { motion } from "framer-motion";
 import { useEffect, useRef } from "react";
 import { useAppStore } from "@/store/appStore";
 
+export interface AppDocument {
+  id: string;
+  name: string;
+  type: string;
+  size: string;
+  company: string;
+  year: number;
+  quarter?: string | null;
+  status: string;
+  pages?: number | null;
+  chunks?: number | null;
+  createdAt?: string | Date;
+  uploadedAt?: string | Date;
+}
+
 const statusConfig = {
   indexed: {
     label: "Indexed",
@@ -72,8 +87,8 @@ const processingSteps = [
   "indexed",
 ] as const;
 
-function StatusBadge({ status }: { status: Document["status"] }) {
-  const config = statusConfig[status];
+function StatusBadge({ status }: { status: string }) {
+  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.indexed;
   const Icon = config.icon;
   return (
     <span className={cn("status-badge border", config.className)}>
@@ -88,7 +103,7 @@ function StatusBadge({ status }: { status: Document["status"] }) {
   );
 }
 
-function ProcessingProgress({ status }: { status: Document["status"] }) {
+function ProcessingProgress({ status }: { status: string }) {
   const stepIndex = processingSteps.indexOf(
     status as (typeof processingSteps)[number],
   );
@@ -125,7 +140,7 @@ function ProcessingProgress({ status }: { status: Document["status"] }) {
   );
 }
 
-function DocIcon({ type }: { type: Document["type"] }) {
+function DocIcon({ type }: { type: string }) {
   if (type === "xlsx")
     return (
       <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
@@ -139,7 +154,7 @@ function DocIcon({ type }: { type: Document["type"] }) {
   );
 }
 
-function DocumentCard({ doc }: { doc: Document }) {
+function DocumentCard({ doc }: { doc: AppDocument }) {
   const isProcessing = doc.status !== "indexed" && doc.status !== "error";
 
   return (
@@ -175,7 +190,7 @@ function DocumentCard({ doc }: { doc: Document }) {
                 {doc.chunks?.toLocaleString()} chunks
               </span>
               <span className="text-[11px] text-slate-400">
-                {doc.uploadedAt.toLocaleDateString("vi-VN")}
+                {doc.createdAt ? String(doc.createdAt).substring(0, 10) : doc.uploadedAt ? String(doc.uploadedAt).substring(0, 10) : ""}
               </span>
             </div>
           )}
@@ -272,7 +287,7 @@ export function DocumentsScreen() {
           <div>
             <h1 className="text-sm font-semibold text-slate-800">Documents</h1>
             <p className="text-[11px] text-slate-400">
-              {indexed}/{mockDocuments.length} indexed · Bộ tài liệu BCTC 2024
+              {indexed}/{documents.length} indexed · Bộ tài liệu BCTC 2024
               Q4
             </p>
           </div>

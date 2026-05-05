@@ -11,6 +11,8 @@ import {
   Settings,
 } from "lucide-react";
 import { cn, formatPercent } from "@/lib/utils";
+import { useEffect } from "react";
+import { useAppStore } from "@/store/appStore";
 import {
   LineChart,
   Line,
@@ -104,6 +106,43 @@ function ScoreCard({
 
 export function EvaluationScreen() {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [evalHistoryData, setEvalHistoryData] = useState<any[]>(evalHistory);
+  const [testCasesData, setTestCasesData] = useState<any[]>(testCases);
+  const [running, setRunning] = useState(false);
+  const { token } = useAppStore();
+
+  useEffect(() => {
+    async function fetchEval() {
+      try {
+        const res = await fetch("/api/evaluation", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.evalHistory) setEvalHistoryData(data.evalHistory);
+      } catch (err) {
+        console.error("Failed to fetch evaluation history", err);
+      }
+    }
+    if (token) fetchEval();
+  }, [token]);
+
+  const handleRunEvaluation = async () => {
+    setRunning(true);
+    try {
+      const res = await fetch("/api/evaluation", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.testCases) {
+        setTestCasesData(data.testCases);
+      }
+    } catch (err) {
+      console.error("Failed to run evaluation", err);
+    } finally {
+      setRunning(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-50 overflow-y-auto">
@@ -122,8 +161,12 @@ export function EvaluationScreen() {
             <button className="flex items-center gap-1.5 text-sm text-slate-600 border border-slate-200 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
               <Download size={14} /> Export Results
             </button>
-            <button className="flex items-center gap-1.5 text-sm font-medium text-white px-4 py-2 rounded-lg cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700">
-              <Play size={14} /> Run Evaluation
+            <button 
+              onClick={handleRunEvaluation}
+              disabled={running}
+              className="flex items-center gap-1.5 text-sm font-medium text-white px-4 py-2 rounded-lg cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+            >
+              <Play size={14} className={running ? "animate-pulse" : ""} /> {running ? "Running..." : "Run Evaluation"}
             </button>
           </div>
         </div>
@@ -145,7 +188,7 @@ export function EvaluationScreen() {
               Quality Trends over Time
             </h2>
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={evalHistory}>
+              <LineChart data={evalHistoryData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="run" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} domain={['auto', 100]} />
@@ -211,7 +254,7 @@ export function EvaluationScreen() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 bg-white">
-              {testCases.map((tc) => (
+              {testCasesData.map((tc) => (
                 <React.Fragment key={tc.id}>
                   <tr 
                     onClick={() => setExpandedRow(expandedRow === tc.id ? null : tc.id)}

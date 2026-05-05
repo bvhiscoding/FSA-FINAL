@@ -10,6 +10,8 @@ import {
   FileText,
 } from "lucide-react";
 import { cn, formatPercent } from "@/lib/utils";
+import { useEffect } from "react";
+import { useAppStore } from "@/store/appStore";
 import {
   BarChart,
   Bar,
@@ -53,6 +55,34 @@ const mockComparisonMetrics = [
 
 export function ComparisonScreen() {
   const [mode, setMode] = useState<"yoy" | "peer">("yoy");
+  const [compData, setCompData] = useState<any[]>(comparisonData);
+  const [rData, setRData] = useState<any[]>(radarData);
+  const [metrics, setMetrics] = useState<any[]>(mockComparisonMetrics);
+  const [insights, setInsights] = useState<string[]>([]);
+  const { token } = useAppStore();
+
+  useEffect(() => {
+    async function fetchComparison() {
+      try {
+        const res = await fetch("/api/comparison", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}` 
+          },
+          body: JSON.stringify({ mode })
+        });
+        const data = await res.json();
+        if (data.comparisonData) setCompData(data.comparisonData);
+        if (data.radarData) setRData(data.radarData);
+        if (data.metrics) setMetrics(data.metrics);
+        if (data.aiInsights) setInsights(data.aiInsights);
+      } catch (err) {
+        console.error("Failed to fetch comparison", err);
+      }
+    }
+    if (token) fetchComparison();
+  }, [mode, token]);
 
   return (
     <div className="flex flex-col h-full bg-slate-50 overflow-y-auto">
@@ -130,7 +160,7 @@ export function ComparisonScreen() {
               Radar Khung Rủi Ro & Hiệu Quả
             </h2>
             <ResponsiveContainer width="100%" height={260}>
-              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={rData}>
                 <PolarGrid stroke="#e2e8f0" />
                 <PolarAngleAxis
                   dataKey="subject"
@@ -161,7 +191,7 @@ export function ComparisonScreen() {
               So sánh Kết Quả Kinh Doanh (Tỷ VND)
             </h2>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={comparisonData}>
+              <BarChart data={compData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
@@ -199,7 +229,7 @@ export function ComparisonScreen() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 bg-white">
-              {mockComparisonMetrics.map((m, i) => (
+              {metrics.map((m, i) => (
                 <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-3 pl-4 pr-2 text-[13px] font-medium text-slate-700">
                     {m.label}
@@ -242,14 +272,16 @@ export function ComparisonScreen() {
             </h2>
           </div>
           <div className="space-y-3 text-[13px] text-slate-700 leading-relaxed">
-            <p>
-              <span className="font-semibold text-blue-700">Tăng trưởng top-line đi kèm suy giảm sinh lời:</span>{" "}
-              Dù doanh thu tăng trưởng 8.2%, lợi nhuận ròng lại suy giảm mạnh 23.4% so với 2023. Biên lợi nhuận gộp thu hẹp từ 26.9% xuống 23.9% cho thấy sức ép lớn từ giá vốn.
-            </p>
-            <p>
-              <span className="font-semibold text-amber-600">Rủi ro đòn bẩy và thanh khoản:</span>{" "}
-              D/E ratio tăng đáng kể từ 0.54x lên 0.79x, trong khi Current Ratio giảm từ 2.34x xuống 1.82x, phản ánh gánh nặng nợ vay ngắn hạn để tài trợ dự án xây dựng cơ bản dở dang (CIP).
-            </p>
+            {insights.length > 0 ? (
+              insights.map((insight, idx) => (
+                <p key={idx}>{insight}</p>
+              ))
+            ) : (
+              <p>
+                <span className="font-semibold text-blue-700">Tăng trưởng top-line đi kèm suy giảm sinh lời:</span>{" "}
+                Dù doanh thu tăng trưởng 8.2%, lợi nhuận ròng lại suy giảm mạnh 23.4% so với 2023. Biên lợi nhuận gộp thu hẹp từ 26.9% xuống 23.9% cho thấy sức ép lớn từ giá vốn.
+              </p>
+            )}
           </div>
         </div>
       </div>

@@ -106,7 +106,7 @@ export function ReportsScreen() {
                   </td>
                   <td className="py-3 px-4 text-[12px] text-slate-600">{report.type}</td>
                   <td className="py-3 px-4 text-[12px] text-slate-600"><span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-medium">{report.company}</span></td>
-                  <td className="py-3 px-4 text-[12px] text-slate-600">{formatDate(report.date, "dd/MM/yyyy")}</td>
+                  <td suppressHydrationWarning className="py-3 px-4 text-[12px] text-slate-600">{formatDate(report.date, "dd/MM/yyyy")}</td>
                   <td className="py-3 px-4 text-right">
                     <span className={cn(
                       "inline-flex px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide",

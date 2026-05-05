@@ -60,7 +60,7 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
           <span className="text-[12px] font-semibold text-slate-700">
             FinSight AI
           </span>
-          <span className="text-[11px] text-slate-400">
+          <span suppressHydrationWarning className="text-[11px] text-slate-400">
             {message.timestamp.toLocaleTimeString("vi-VN", {
               hour: "2-digit",
               minute: "2-digit",
@@ -172,7 +172,7 @@ function UserMessage({ message }: { message: ChatMessage }) {
     >
       <div className="max-w-[70%]">
         <div className="flex items-center gap-2 mb-1 justify-end">
-          <span className="text-[11px] text-slate-400">
+          <span suppressHydrationWarning className="text-[11px] text-slate-400">
             {message.timestamp.toLocaleTimeString("vi-VN", {
               hour: "2-digit",
               minute: "2-digit",
