@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("analyst")
+  password  String
+  createdAt DateTime @default(now())
+  chats     Chat[]
+  reports   Report[]
+}
+
+model Chat {
+  id        String        @id @default(cuid())
+  title     String?
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  company   String
+  docSet    String
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  role      String   // "user" | "assistant"
+  content   String
+  sources   String?  // JSON string
+  metrics   String?  // JSON string
+  tokens    Int?
+  latencyMs Int?
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // pdf, xlsx, docx
+  size      String
+  path      String   // storage path
+  company   String
+  year      Int
+  quarter   String?
+  status    String   @default("uploading")
+  pages     Int?
+  chunks    Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PromptTemplate {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String
+  variables   String   // JSON string
+  template    String
+  outputFmt   String
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  title     String
+  type      String
+  company   String
+  content   String?
+  status    String   @default("draft")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EvalRun {
+  id          String         @id @default(cuid())
+  accuracy    Float
+  retrieval   Float
+  relevance   Float
+  avgLatency  Float
+  config      String         // JSON string
+  testCases   EvalTestCase[]
+  createdAt   DateTime       @default(now())
+}
+
+model EvalTestCase {
+  id       String  @id @default(cuid())
+  runId    String
+  run      EvalRun @relation(fields: [runId], references: [id])
+  question String
+  expected String
+  actual   String?
+  score    Float
+  sources  Int
+  status   String  // pass, warn, fail
+}
+
+model Settings {
+  id          String @id @default(cuid())
+  userId      String @unique
+  ragTopK     Int    @default(5)
+  ragThreshold Float @default(0.80)
+  chunkSize   Int    @default(512)
+  chunkOverlap Int   @default(50)
+  aiModel     String @default("gpt-4o")
+  theme       String @default("light")
+  config      String? // JSON string
+}
