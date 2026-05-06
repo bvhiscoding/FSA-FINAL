@@ -10,8 +10,12 @@ class LLMGenerator:
         self.model = settings.llm_model
 
     def generate(self, question: str, contexts: List[RetrievedChunk]) -> str:
-        # Build prompt
-        context_str = "\n\n".join([f"--- Context {i+1} ---\n{chunk.text}" for i, chunk in enumerate(contexts)])
+        context_blocks = []
+        for index, chunk in enumerate(contexts, start=1):
+            metadata = chunk.metadata
+            source = f"Source: {metadata.filename}, page {metadata.page or 'unknown'}, chunk {metadata.chunk_index}"
+            context_blocks.append(f"--- Context {index} ---\n{source}\n{chunk.text}")
+        context_str = "\n\n".join(context_blocks)
         
         system_prompt = (
             "You are an expert financial analyst. Use the provided contexts to answer the user's question accurately. "

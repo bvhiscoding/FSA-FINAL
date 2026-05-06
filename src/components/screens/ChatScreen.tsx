@@ -9,7 +9,7 @@ import {
   Zap,
 } from "lucide-react";
 import { cn, formatPercent } from "@/lib/utils";
-import { mockMessages, ChatMessage } from "@/data/mockData";
+import { ChatMessage } from "@/data/mockData";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -231,10 +231,29 @@ const suggestedPrompts = [
   "So sánh biên lợi nhuận 2023 vs 2024",
 ];
 
+interface ChatSession {
+  id: string;
+  title: string | null;
+  company: string;
+  docSet: string;
+  updatedAt: string;
+}
+
+function toChatMessage(message: any): ChatMessage {
+  return {
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    timestamp: new Date(message.timestamp || message.createdAt),
+    sources: message.sources || [],
+    metrics: message.metrics || [],
+  };
+}
+
 export function ChatScreen() {
-  const [messages, setMessages] = useState<ChatMessage[]>(
-    mockMessages.slice(0, 2),
-  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [models, setModels] = useState<any[]>([]);
@@ -264,7 +283,53 @@ export function ChatScreen() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const { token } = useAppStore();
+  const fetchChatSessions = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch("/api/chat", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.chats) setChatSessions(data.chats);
+    } catch (err) {
+      console.error("Failed to fetch chat sessions", err);
+    }
+  };
+
+  const loadChat = async (chatId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/chat/${chatId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load chat");
+      const loadedMessages = data.chat.messages.map(toChatMessage);
+      const lastAssistant = [...loadedMessages].reverse().find((message) => message.role === "assistant");
+      setActiveChatId(data.chat.id);
+      setMessages(loadedMessages);
+      setLatestSources(lastAssistant?.sources || []);
+    } catch (err) {
+      console.error("Failed to load chat", err);
+    }
+  };
+
+  const startNewChat = () => {
+    setActiveChatId(null);
+    setMessages([]);
+    setLatestSources([]);
+  };
+
+  const {
+    token,
+    selectedCompany,
+    selectedDocumentSet,
+    setLatestSources,
+  } = useAppStore();
+
+  useEffect(() => {
+    fetchChatSessions();
+  }, [token]);
 
   const handleSend = async (text?: string) => {
     const msg = text || input.trim();
@@ -290,6 +355,9 @@ export function ChatScreen() {
         body: JSON.stringify({
           message: msg,
           model: selectedModel,
+          chatId: activeChatId,
+          company: selectedCompany,
+          docSet: selectedDocumentSet,
           history: messages.map(m => ({ role: m.role, content: m.content }))
         }),
       });
@@ -300,15 +368,19 @@ export function ChatScreen() {
         throw new Error(data.error || "Failed to send message");
       }
 
+      const sources = data.sources || [];
       const aiMsg: ChatMessage = {
         id: generateId() + "-ai",
         role: "assistant",
         content: data.message.content,
         timestamp: new Date(data.message.timestamp),
-        sources: data.sources || [],
+        sources,
         metrics: data.metrics || [],
       };
+      if (data.chat?.id) setActiveChatId(data.chat.id);
+      setLatestSources(sources);
       setMessages((prev) => [...prev, aiMsg]);
+      await fetchChatSessions();
     } catch (err) {
       console.error("Chat error:", err);
       const errorMsg: ChatMessage = {
@@ -337,7 +409,7 @@ export function ChatScreen() {
         <div>
           <h1 className="text-sm font-semibold text-slate-800">Chat Analyst</h1>
           <p className="text-[11px] text-slate-400">
-            Dược Phẩm Hà Tây (DHT) · BCTC 2024 Q4 · {messages.length} tin nhắn
+            {selectedCompany} · {selectedDocumentSet} · {messages.length} tin nhắn
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -362,7 +434,24 @@ export function ChatScreen() {
           <button className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-slate-700 transition-colors px-2 py-1 rounded hover:bg-slate-100 cursor-pointer">
             <Zap size={12} /> Quick Prompts
           </button>
-          <button className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-slate-700 transition-colors px-2 py-1 rounded hover:bg-slate-100 cursor-pointer">
+          <select
+            value={activeChatId || ""}
+            onChange={(e) => {
+              if (e.target.value) loadChat(e.target.value);
+            }}
+            className="max-w-[180px] text-[12px] font-medium bg-slate-100 border border-slate-200 outline-none text-slate-700 rounded-lg px-2 py-1.5 cursor-pointer"
+          >
+            <option value="">Chat sessions</option>
+            {chatSessions.map((chat) => (
+              <option key={chat.id} value={chat.id}>
+                {chat.title || "New Chat"}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={startNewChat}
+            className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-slate-700 transition-colors px-2 py-1 rounded hover:bg-slate-100 cursor-pointer"
+          >
             New Chat
           </button>
         </div>

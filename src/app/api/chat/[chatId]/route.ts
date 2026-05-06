@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 
+function parseJsonField(value: string | null) {
+  if (!value) return [];
+  try {
+    return JSON.parse(value);
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(
   req: Request,
   { params }: any
@@ -33,7 +42,19 @@ export async function GET(
       return NextResponse.json({ error: "Chat not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ chat });
+    return NextResponse.json({
+      chat: {
+        ...chat,
+        messages: chat.messages.map((message) => ({
+          id: message.id,
+          role: message.role,
+          content: message.content,
+          timestamp: message.createdAt.toISOString(),
+          sources: parseJsonField(message.sources),
+          metrics: parseJsonField(message.metrics),
+        })),
+      },
+    });
   } catch (error) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

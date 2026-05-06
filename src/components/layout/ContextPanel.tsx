@@ -13,11 +13,7 @@ import {
   Hash,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { mockMessages } from "@/data/mockData";
-import { useAppStore } from "@/store/appStore";
-
-const lastMessage = mockMessages.find((m) => m.role === "assistant");
-const sources = lastMessage?.sources || [];
+import { RagSource, useAppStore } from "@/store/appStore";
 
 function ScoreDot({ score }: { score: number }) {
   const pct = Math.round(score * 100);
@@ -41,7 +37,7 @@ function SourceCard({
   source,
   index,
 }: {
-  source: (typeof sources)[0];
+  source: RagSource;
   index: number;
 }) {
   const [expanded, setExpanded] = useState(index === 0);
@@ -63,11 +59,11 @@ function SourceCard({
         <FileText size={12} className="text-slate-400 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold text-slate-700 truncate">
-            {source.documentName}
+            Context {source.contextNumber} · {source.documentName}
           </p>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[10px] text-slate-400">
-              Trang {source.page}
+              Trang {source.page ?? "?"} · Chunk {source.chunkIndex ?? "?"}
             </span>
             <ScoreDot score={source.relevanceScore} />
           </div>
@@ -144,11 +140,13 @@ const tabs: { id: TabKey; label: string; icon: React.ElementType }[] = [
 ];
 
 export function ContextPanel() {
-  const { contextPanelOpen, setContextPanelOpen } = useAppStore();
+  const { contextPanelOpen, setContextPanelOpen, latestSources } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabKey>("sources");
   const [note, setNote] = useState(
     "• Cần xác minh nguyên nhân G&A tăng\n• Theo dõi tiến độ CIP Q1 2025\n• So sánh với đối thủ DCL, TRA",
   );
+
+  const sources = latestSources;
 
   if (!contextPanelOpen) return null;
 
@@ -213,6 +211,11 @@ export function ContextPanel() {
             {sources.map((source, i) => (
               <SourceCard key={source.id} source={source} index={i} />
             ))}
+            {sources.length === 0 && (
+              <p className="text-[11px] text-slate-400 bg-slate-50 border border-slate-100 rounded-lg p-3">
+                Chưa có context thật. Hãy gửi một câu hỏi trong Chat Analyst để xem 5 chunks được truy xuất.
+              </p>
+            )}
 
             {/* Retrieval info */}
             <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">

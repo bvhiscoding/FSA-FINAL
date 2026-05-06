@@ -20,6 +20,20 @@ interface UserInfo {
   role: string;
 }
 
+export interface RagSource {
+  id: string;
+  contextNumber: number;
+  documentId: string;
+  documentName: string;
+  title?: string;
+  page: number | null;
+  chunkIndex: number | null;
+  chunk: string;
+  relevanceScore: number;
+  ocrEngine?: string | null;
+  type?: string;
+}
+
 interface AppState {
   isAuthenticated: boolean;
   setIsAuthenticated: (v: boolean) => void;
@@ -41,6 +55,8 @@ interface AppState {
   setRagStatus: (status: "active" | "indexing" | "error") => void;
   aiModel: string;
   setAiModel: (model: string) => void;
+  latestSources: RagSource[];
+  setLatestSources: (sources: RagSource[]) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -64,4 +80,6 @@ export const useAppStore = create<AppState>((set) => ({
   setRagStatus: (status) => set({ ragStatus: status }),
   aiModel: "Local LLM",
   setAiModel: (model) => set({ aiModel: model }),
+  latestSources: [],
+  setLatestSources: (sources) => set({ latestSources: sources }),
 }));

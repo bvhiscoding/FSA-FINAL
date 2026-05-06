@@ -14,6 +14,7 @@ import {
   Cpu,
   FileSpreadsheet,
   X,
+  Trash2,
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -158,7 +159,15 @@ function DocIcon({ type }: { type: string }) {
   );
 }
 
-function DocumentCard({ doc, onPreview }: { doc: AppDocument; onPreview: (doc: AppDocument) => void }) {
+function DocumentCard({
+  doc,
+  onPreview,
+  onDelete,
+}: {
+  doc: AppDocument;
+  onPreview: (doc: AppDocument) => void;
+  onDelete: (doc: AppDocument) => void;
+}) {
   const isProcessing = doc.status !== "indexed" && doc.status !== "error";
 
   return (
@@ -180,7 +189,27 @@ function DocumentCard({ doc, onPreview }: { doc: AppDocument; onPreview: (doc: A
                 {doc.quarter ? ` ${doc.quarter}` : ""} · {doc.size}
               </p>
             </div>
-            <StatusBadge status={doc.status} />
+            <div className="flex flex-col items-end gap-2">
+              <StatusBadge status={doc.status} />
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {doc.status === "indexed" && (
+                  <button
+                    aria-label="Preview parsed OCR"
+                    onClick={() => onPreview(doc)}
+                    className="w-7 h-7 flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                  >
+                    <Eye size={13} />
+                  </button>
+                )}
+                <button
+                  aria-label="Delete document"
+                  onClick={() => onDelete(doc)}
+                  className="w-7 h-7 flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
           </div>
 
           {isProcessing && <ProcessingProgress status={doc.status} />}
@@ -204,15 +233,6 @@ function DocumentCard({ doc, onPreview }: { doc: AppDocument; onPreview: (doc: A
           )}
         </div>
 
-        {doc.status === "indexed" && (
-          <button
-            aria-label="Preview parsed OCR"
-            onClick={() => onPreview(doc)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-          >
-            <Eye size={13} />
-          </button>
-        )}
       </div>
     </motion.div>
   );
@@ -276,6 +296,33 @@ export function DocumentsScreen() {
       setParsedMarkdown(err instanceof Error ? err.message : "Không đọc được parsed OCR");
     } finally {
       setLoadingPreview(false);
+    }
+  };
+
+  const deleteDocument = async (doc: AppDocument) => {
+    if (!token) {
+      alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Xóa tài liệu "${doc.name}"?`);
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/documents/${doc.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Không xóa được tài liệu");
+      }
+      setDocuments((current) => current.filter((item) => item.id !== doc.id));
+    } catch (err) {
+      console.error("Delete document error", err);
+      alert(err instanceof Error ? err.message : "Lỗi khi xóa tài liệu");
     }
   };
 
@@ -446,7 +493,7 @@ export function DocumentsScreen() {
       {/* Document list */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
         {filtered.map((doc) => (
-          <DocumentCard key={doc.id} doc={doc} onPreview={openParsedPreview} />
+          <DocumentCard key={doc.id} doc={doc} onPreview={openParsedPreview} onDelete={deleteDocument} />
         ))}
         {filtered.length === 0 && (
           <div className="text-center py-12">
