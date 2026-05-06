@@ -1,60 +1,63 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-export async function GET(
-  req: Request,
-  { params }: any
-) {
+const allowedStatuses = new Set([
+  "parsing",
+  "ocr",
+  "chunking",
+  "embedding",
+  "indexed",
+  "error",
+]);
+
+export async function GET(_req: Request, { params }: { params: Promise<{ docId: string }> }) {
   try {
     const { docId } = await params;
-    const document = await prisma.document.findUnique({
-      where: { id: docId },
-      select: {
-        id: true,
-        status: true,
-      }
-    });
+    const document = await prisma.document.findUnique({ where: { id: docId } });
 
     if (!document) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
-    // Mock progress based on status, normally this would come from a queue or database
-    let progress = 0;
-    let currentStep = "";
+    return NextResponse.json({ document });
+  } catch (error) {
+    console.error("Document status read error:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    );
+  }
+}
 
-    switch (document.status) {
-      case "uploading":
-        progress = 20;
-        currentStep = "Uploading file...";
-        break;
-      case "processing":
-        progress = 60;
-        currentStep = "Extracting text and chunking...";
-        break;
-      case "indexing":
-        progress = 80;
-        currentStep = "Generating embeddings...";
-        break;
-      case "ready":
-        progress = 100;
-        currentStep = "Ready for querying";
-        break;
-      case "error":
-        progress = 0;
-        currentStep = "Error processing document";
-        break;
-      default:
-        progress = 0;
-        currentStep = "Unknown";
+export async function POST(req: Request, { params }: { params: Promise<{ docId: string }> }) {
+  try {
+    const { docId } = await params;
+    const body = await req.json();
+    const status = String(body.status || "");
+
+    if (!allowedStatuses.has(status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    return NextResponse.json({ 
-      status: document.status,
-      progress,
-      currentStep
+    const document = await prisma.document.update({
+      where: { id: docId },
+      data: {
+        status,
+        pages: typeof body.pages === "number" ? body.pages : undefined,
+        chunks: typeof body.chunks === "number" ? body.chunks : undefined,
+        parsedPath: typeof body.parsedPath === "string" ? body.parsedPath : undefined,
+        parsedPreview: typeof body.parsedPreview === "string" ? body.parsedPreview : undefined,
+        ocrEngine: typeof body.ocrEngine === "string" ? body.ocrEngine : undefined,
+        errorMessage: typeof body.errorMessage === "string" ? body.errorMessage : undefined,
+      },
     });
+
+    return NextResponse.json({ document });
   } catch (error) {
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("Document status callback error:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    );
   }
 }

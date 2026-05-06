@@ -1,0 +1,7 @@
+RAG smoke test document.
+
+Claude Code đang test hệ thống RAG trong thư mục RAG-system.
+
+Thông tin kiểm thử: mèo tên là Mochi, mã kiểm thử là RAG-TEST-2026, và hệ thống phải truy xuất được nội dung tiếng Việt.
+
+Nếu truy vấn hỏi mã kiểm thử, câu trả lời đúng phải liên quan tới RAG-TEST-2026.

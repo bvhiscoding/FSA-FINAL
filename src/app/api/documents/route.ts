@@ -76,14 +76,50 @@ export async function POST(req: Request) {
         company,
         year,
         quarter: quarter || null,
-        status: "processing", // initial status
+        status: "parsing",
       },
     });
 
-    // We would trigger the background RAG indexing microservice here
+    const fastApiFormData = new FormData();
+    fastApiFormData.append("file", file);
+    fastApiFormData.append("ocr_engine", "auto");
+    fastApiFormData.append("language", "vie+eng");
+    fastApiFormData.append("callback_url", `http://127.0.0.1:3000/api/documents/${document.id}/status`);
 
-    return NextResponse.json({ document });
+    const ragResponse = await fetch("http://127.0.0.1:8000/documents/ingest", {
+      method: "POST",
+      body: fastApiFormData,
+    });
+
+    if (!ragResponse.ok) {
+      const details = await ragResponse.text();
+      await prisma.document.update({
+        where: { id: document.id },
+        data: { status: "error", errorMessage: details || "RAG ingest failed" },
+      });
+      return NextResponse.json({ error: "RAG ingest failed", details }, { status: 502 });
+    }
+
+    const ragData = await ragResponse.json();
+    const updatedDocument = await prisma.document.update({
+      where: { id: document.id },
+      data: {
+        status: "indexed",
+        chunks: ragData.chunks || 0,
+        pages: ragData.pages || null,
+        parsedPath: ragData.parsed_path || null,
+        parsedPreview: ragData.parsed_preview || null,
+        ocrEngine: ragData.ocr_engine || null,
+        errorMessage: null,
+      },
+    });
+
+    return NextResponse.json({ document: updatedDocument });
   } catch (error) {
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("Documents upload error:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    );
   }
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
-const OLLAMA_URL = "https://inspirative-separately-earlean.ngrok-free.dev";
+
 
 export async function POST(req: Request) {
   try {
@@ -23,51 +23,41 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    // TODO: Implement RAG retrieval here
-    // For now, just send to Ollama directly
+    const FASTAPI_URL = "http://127.0.0.1:8000";
     
-    const ollamaPayload = {
-      model: model || "llama3",
-      messages: [
-        { role: "system", content: "You are a professional financial analyst. Provide clear, data-driven insights based on financial statements." },
-        ...(history || []),
-        { role: "user", content: message }
-      ],
-      stream: false,
+    // Call Python RAG Microservice
+    const ragPayload = {
+      question: message,
+      top_k: 5
     };
 
-    const response = await fetch(`${OLLAMA_URL}/api/chat`, {
+    const response = await fetch(`${FASTAPI_URL}/query`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(ollamaPayload),
+      body: JSON.stringify(ragPayload),
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama error: ${response.statusText}`);
+      throw new Error(`RAG Service error: ${response.statusText}`);
     }
 
     const data = await response.json();
-    
-    // Save message to DB (optional, but good for persistence)
-    // if (chatId) {
-    //   await prisma.chatMessage.createMany({
-    //     data: [
-    //       { chatId, role: "user", content: message },
-    //       { chatId, role: "assistant", content: data.message.content }
-    //     ]
-    //   });
-    // }
 
+    // Map RAG service response to Frontend ChatMessage format
     return NextResponse.json({
       message: {
         role: "assistant",
-        content: data.message.content,
+        content: data.answer,
         timestamp: new Date().toISOString(),
       },
-      metrics: [], // Mock metrics for now
-      sources: []  // Mock sources for now
+      metrics: [], // Can extract metrics from LLM response later
+      sources: data.contexts ? data.contexts.map((c: any) => ({
+        id: c.metadata?.document_id || c.document_id || "doc",
+        title: c.metadata?.filename || c.filename || "Tài liệu BCTC",
+        type: "pdf"
+      })) : []
     });
 
   } catch (error) {

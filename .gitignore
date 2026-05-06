@@ -40,4 +40,20 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# local RAG artifacts
+/storage/
+/RAG-system/storage/
+/RAG-system/2024/
+/RAG-system/__pycache__/
+/RAG-system/**/__pycache__/
+/RAG-system/**/*.py[cod]
+/RAG-system/.pytest_cache/
+/RAG-system/.mypy_cache/
+/RAG-system/.ruff_cache/
+/RAG-system/*.egg-info/
+/RAG-system/output/
+
 /src/generated/prisma
+
+/docs
+

@@ -34,6 +34,10 @@ export interface AppDocument {
   chunks?: number | null;
   createdAt?: string | Date;
   uploadedAt?: string | Date;
+  parsedPath?: string | null;
+  parsedPreview?: string | null;
+  ocrEngine?: string | null;
+  errorMessage?: string | null;
 }
 
 const statusConfig = {
@@ -154,7 +158,7 @@ function DocIcon({ type }: { type: string }) {
   );
 }
 
-function DocumentCard({ doc }: { doc: AppDocument }) {
+function DocumentCard({ doc, onPreview }: { doc: AppDocument; onPreview: (doc: AppDocument) => void }) {
   const isProcessing = doc.status !== "indexed" && doc.status !== "error";
 
   return (
@@ -181,6 +185,10 @@ function DocumentCard({ doc }: { doc: AppDocument }) {
 
           {isProcessing && <ProcessingProgress status={doc.status} />}
 
+          {doc.status === "error" && doc.errorMessage && (
+            <p className="text-[11px] text-red-500 mt-2 line-clamp-2">{doc.errorMessage}</p>
+          )}
+
           {doc.status === "indexed" && (
             <div className="flex items-center gap-4 mt-2">
               <span className="text-[11px] text-slate-500">
@@ -198,7 +206,8 @@ function DocumentCard({ doc }: { doc: AppDocument }) {
 
         {doc.status === "indexed" && (
           <button
-            aria-label="Preview document"
+            aria-label="Preview parsed OCR"
+            onClick={() => onPreview(doc)}
             className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
           >
             <Eye size={13} />
@@ -215,6 +224,9 @@ export function DocumentsScreen() {
   const [search, setSearch] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<AppDocument | null>(null);
+  const [parsedMarkdown, setParsedMarkdown] = useState("");
+  const [loadingPreview, setLoadingPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { token, selectedCompany } = useAppStore();
 
@@ -240,9 +252,48 @@ export function DocumentsScreen() {
     fetchDocuments();
   }, [selectedCompany, token]);
 
+  useEffect(() => {
+    const hasProcessing = documents.some((doc) => doc.status !== "indexed" && doc.status !== "error");
+    if (!hasProcessing) return;
+
+    const interval = window.setInterval(() => {
+      fetchDocuments();
+    }, 1500);
+
+    return () => window.clearInterval(interval);
+  }, [documents, selectedCompany, token]);
+
+  const openParsedPreview = async (doc: AppDocument) => {
+    setPreviewDoc(doc);
+    setParsedMarkdown("");
+    setLoadingPreview(true);
+    try {
+      const res = await fetch(`/api/documents/${doc.id}/parsed`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không đọc được parsed OCR");
+      setParsedMarkdown(data.markdown || "");
+    } catch (err) {
+      setParsedMarkdown(err instanceof Error ? err.message : "Không đọc được parsed OCR");
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!token) {
+      alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    if (!selectedCompany) {
+      alert("Vui lòng chọn công ty trước khi upload tài liệu.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
 
     setUploading(true);
     const formData = new FormData();
@@ -260,14 +311,24 @@ export function DocumentsScreen() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
-      
+      if (!res.ok) {
+        let message = `Upload failed (${res.status})`;
+        try {
+          const data = await res.json();
+          message = data.error || data.details || message;
+        } catch {
+          message = await res.text();
+        }
+        throw new Error(message);
+      }
+
       await fetchDocuments();
     } catch (err) {
       console.error("Upload error", err);
-      alert("Lỗi khi tải lên tài liệu");
+      alert(err instanceof Error ? err.message : "Lỗi khi tải lên tài liệu");
     } finally {
       setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -277,7 +338,7 @@ export function DocumentsScreen() {
       d.company.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const indexed = filtered.filter((d) => d.status === "indexed" || d.status === "processing").length;
+  const indexed = filtered.filter((d) => d.status === "indexed").length;
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -305,7 +366,7 @@ export function DocumentsScreen() {
             ref={fileInputRef} 
             onChange={handleUpload} 
             className="hidden" 
-            accept=".pdf,.xlsx,.docx"
+            accept=".pdf,.docx,.txt,.md,.csv,.json,.png,.jpg,.jpeg,.bmp,.tif,.tiff,.webp"
           />
         </div>
 
@@ -373,10 +434,10 @@ export function DocumentsScreen() {
           <Upload size={20} className="mx-auto text-slate-300 mb-2" />
           <p className="text-sm font-medium text-slate-600">
             Kéo thả hoặc{" "}
-            <span className="text-blue-500 cursor-pointer">chọn file</span>
+            <span onClick={() => fileInputRef.current?.click()} className="text-blue-500 cursor-pointer">chọn file</span>
           </p>
           <p className="text-[11px] text-slate-400 mt-1">
-            PDF, XLSX, DOCX · Tối đa 100MB
+            PDF, DOCX, TXT, ảnh · Tối đa 100MB
           </p>
         </div>
       </div>
@@ -384,7 +445,7 @@ export function DocumentsScreen() {
       {/* Document list */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
         {filtered.map((doc) => (
-          <DocumentCard key={doc.id} doc={doc} />
+          <DocumentCard key={doc.id} doc={doc} onPreview={openParsedPreview} />
         ))}
         {filtered.length === 0 && (
           <div className="text-center py-12">
@@ -393,6 +454,25 @@ export function DocumentsScreen() {
           </div>
         )}
       </div>
+
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-6">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col border border-slate-200">
+            <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-800">Parsed OCR</h2>
+                <p className="text-[11px] text-slate-400">{previewDoc.name}</p>
+              </div>
+              <button onClick={() => setPreviewDoc(null)} className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-slate-100">
+                <X size={16} />
+              </button>
+            </div>
+            <pre className="p-4 overflow-auto text-xs whitespace-pre-wrap text-slate-700 flex-1">
+              {loadingPreview ? "Đang tải parsed OCR..." : parsedMarkdown}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

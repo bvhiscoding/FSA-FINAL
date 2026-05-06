@@ -43,19 +43,23 @@ model ChatMessage {
 }
 
 model Document {
-  id        String   @id @default(cuid())
-  name      String
-  type      String   // pdf, xlsx, docx
-  size      String
-  path      String   // storage path
-  company   String
-  year      Int
-  quarter   String?
-  status    String   @default("uploading")
-  pages     Int?
-  chunks    Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String
+  type          String   // pdf, xlsx, docx
+  size          String
+  path          String   // storage path
+  company       String
+  year          Int
+  quarter       String?
+  status        String   @default("uploading")
+  pages         Int?
+  chunks        Int?
+  parsedPath    String?
+  parsedPreview String?
+  ocrEngine     String?
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model PromptTemplate {

@@ -18,7 +18,11 @@ export function SettingsScreen() {
   useEffect(() => {
     async function fetchModels() {
       try {
-        const response = await fetch("https://inspirative-separately-earlean.ngrok-free.dev/api/tags");
+        const response = await fetch("https://inspirative-separately-earlean.ngrok-free.dev/api/tags", {
+          headers: {
+            "ngrok-skip-browser-warning": "true",
+          },
+        });
         if (response.ok) {
           const data = await response.json();
           if (data && data.models) {

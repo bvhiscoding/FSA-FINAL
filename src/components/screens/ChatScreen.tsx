@@ -349,9 +349,11 @@ export function ChatScreen() {
               className="text-[12px] font-medium bg-transparent border-none outline-none text-slate-700 cursor-pointer"
             >
               {models.length > 0 ? (
-                models.map((m) => (
-                  <option key={m.name} value={m.name}>{m.name}</option>
-                ))
+                models
+                  .filter((m) => !m.name.includes("embedding") && !m.name.includes("bge"))
+                  .map((m) => (
+                    <option key={m.name} value={m.name}>{m.name}</option>
+                  ))
               ) : (
                 <option>Loading models...</option>
               )}
