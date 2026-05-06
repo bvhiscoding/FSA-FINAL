@@ -326,9 +326,8 @@ export function DocumentsScreen() {
     }
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const uploadFiles = async (files: File[]) => {
+    if (files.length === 0) return;
 
     if (!token) {
       alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
@@ -344,9 +343,9 @@ export function DocumentsScreen() {
 
     setUploading(true);
     const formData = new FormData();
-    formData.append("file", file);
+    files.forEach((file) => formData.append("files", file));
     formData.append("company", selectedCompany);
-    formData.append("year", "2024"); // Default for now
+    formData.append("year", "2024");
     formData.append("quarter", "Q4");
 
     try {
@@ -357,19 +356,17 @@ export function DocumentsScreen() {
         },
         body: formData,
       });
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        let message = `Upload failed (${res.status})`;
-        try {
-          const data = await res.json();
-          message = data.error || data.details || message;
-        } catch {
-          message = await res.text();
-        }
-        throw new Error(message);
+        throw new Error(data?.error || data?.details || `Upload failed (${res.status})`);
       }
 
-      await fetchDocuments();
+      if (data?.documents?.length) {
+        setDocuments((current) => [...data.documents, ...current]);
+      } else {
+        await fetchDocuments();
+      }
     } catch (err) {
       console.error("Upload error", err);
       alert(err instanceof Error ? err.message : "Lỗi khi tải lên tài liệu");
@@ -377,6 +374,10 @@ export function DocumentsScreen() {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await uploadFiles(Array.from(e.target.files || []));
   };
 
   const filtered = documents.filter(
@@ -407,14 +408,15 @@ export function DocumentsScreen() {
             style={{ background: "#2563eb" }}
           >
             {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-            {uploading ? "Uploading..." : "Upload Document"}
+            {uploading ? "Uploading..." : "Upload Documents"}
           </button>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleUpload} 
-            className="hidden" 
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleUpload}
+            className="hidden"
             accept=".pdf,.docx,.txt,.md,.csv,.json,.png,.jpg,.jpeg,.bmp,.tif,.tiff,.webp"
+            multiple
           />
         </div>
 
@@ -471,7 +473,12 @@ export function DocumentsScreen() {
         <div
           onDragEnter={() => setIsDragging(true)}
           onDragLeave={() => setIsDragging(false)}
-          onDrop={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            uploadFiles(Array.from(e.dataTransfer.files));
+          }}
+          onDragOver={(e) => e.preventDefault()}
           className={cn(
             "border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200",
             isDragging
@@ -485,7 +492,7 @@ export function DocumentsScreen() {
             <span onClick={() => fileInputRef.current?.click()} className="text-blue-500 cursor-pointer">chọn file</span>
           </p>
           <p className="text-[11px] text-slate-400 mt-1">
-            PDF, DOCX, TXT, ảnh · Tối đa 100MB
+            PDF, DOCX, TXT, ảnh · Có thể chọn nhiều file · Tối đa 100MB/file
           </p>
         </div>
       </div>

@@ -29,6 +29,8 @@ class IngestResponse(BaseModel):
 class QueryRequest(BaseModel):
     question: str = Field(min_length=1)
     top_k: int = Field(default=5, ge=1, le=20)
+    ticker: str | None = None
+    include_structured: bool = True
 
 
 class RetrievedChunk(BaseModel):
@@ -41,6 +43,8 @@ class QueryResponse(BaseModel):
     question: str
     answer: str
     contexts: list[RetrievedChunk]
+    structured_context: str | None = None
+    ticker: str | None = None
 
 
 class DocumentSummary(BaseModel):

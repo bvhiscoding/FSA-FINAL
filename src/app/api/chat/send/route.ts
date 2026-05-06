@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { message, chatId, company, docSet } = body;
+    const { message, chatId, company, docSet, ticker } = body;
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
@@ -74,16 +74,25 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         question: message,
         top_k: 5,
+        ticker: ticker || null,
+        include_structured: true,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`RAG Service error: ${response.statusText}`);
+      const details = await response.text();
+      return NextResponse.json(
+        { error: "RAG Service error", details },
+        { status: 502 },
+      );
     }
 
     const data = await response.json();
     const sources = data.contexts ? data.contexts.map(mapContextSource) : [];
-    const metrics: any[] = [];
+    const structuredContext = data.structured_context || null;
+    const metrics: any[] = structuredContext
+      ? [{ label: "Ticker", value: data.ticker || ticker || "Structured DB" }]
+      : [];
 
     const assistantMessage = await prisma.chatMessage.create({
       data: {
@@ -110,9 +119,14 @@ export async function POST(req: Request) {
       },
       metrics,
       sources,
+      structuredContext,
+      ticker: data.ticker || ticker || null,
     });
   } catch (error) {
     console.error("Chat error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    );
   }
 }

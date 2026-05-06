@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     chroma_dir: Path = Field(default=Path("./storage/chroma"))
     upload_dir: Path = Field(default=Path("./storage/uploads"))
     parsed_dir: Path = Field(default=Path("./storage/parsed"))
+    stocks_db_path: Path = Field(default=Path("C:/Users/Admin/Desktop/FSA/vietnam_stocks.db"))
 
     model_config = SettingsConfigDict(env_file=PROJECT_ROOT / ".env", env_file_encoding="utf-8")
 
@@ -31,6 +32,8 @@ class Settings(BaseSettings):
             self.upload_dir = PROJECT_ROOT / self.upload_dir
         if not self.parsed_dir.is_absolute():
             self.parsed_dir = PROJECT_ROOT / self.parsed_dir
+        if not self.stocks_db_path.is_absolute():
+            self.stocks_db_path = PROJECT_ROOT / self.stocks_db_path
 
         self.chroma_dir.mkdir(parents=True, exist_ok=True)
         self.upload_dir.mkdir(parents=True, exist_ok=True)

@@ -9,21 +9,28 @@ class LLMGenerator:
         self.api_url = f"{settings.llm_base_url}/chat/completions"
         self.model = settings.llm_model
 
-    def generate(self, question: str, contexts: List[RetrievedChunk]) -> str:
+    def generate(self, question: str, contexts: List[RetrievedChunk], structured_context: str | None = None) -> str:
         context_blocks = []
         for index, chunk in enumerate(contexts, start=1):
             metadata = chunk.metadata
             source = f"Source: {metadata.filename}, page {metadata.page or 'unknown'}, chunk {metadata.chunk_index}"
             context_blocks.append(f"--- Context {index} ---\n{source}\n{chunk.text}")
-        context_str = "\n\n".join(context_blocks)
-        
+        document_context = "\n\n".join(context_blocks) or "No relevant document RAG context found."
+        structured_block = structured_context or "No structured financial database context found."
+
         system_prompt = (
             "You are an expert financial analyst. Use the provided contexts to answer the user's question accurately. "
-            "If the answer is not contained in the contexts, say you do not have enough information. "
-            "Always cite your sources if possible based on the context."
+            "Prefer the structured financial database for numeric financial facts, periods, ratios, and latest price data. "
+            "Use document RAG context for narrative explanations, notes, and supporting evidence. "
+            "If the answer is not contained in either source, say you do not have enough information. "
+            "Always cite sources using table names or document context labels when possible."
         )
-        
-        user_prompt = f"Context Information:\n{context_str}\n\nQuestion: {question}"
+
+        user_prompt = (
+            f"Structured Financial Database Context:\n{structured_block}\n\n"
+            f"Document RAG Context:\n{document_context}\n\n"
+            f"Question: {question}"
+        )
 
         payload = {
             "model": self.model,
@@ -47,4 +54,5 @@ class LLMGenerator:
         except Exception as e:
             print(f"LLM Generation Error: {e}")
             # Fallback to simple concatenation if LLM fails
-            return "Error calling LLM. Raw context:\n" + "\n\n".join(chunk.text for chunk in contexts[:3])
+            raw_document_context = "\n\n".join(chunk.text for chunk in contexts[:3])
+            return "Error calling LLM. Raw context:\n" + "\n\n".join(filter(None, [structured_context, raw_document_context]))

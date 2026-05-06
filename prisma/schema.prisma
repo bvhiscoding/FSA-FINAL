@@ -56,6 +56,7 @@ model Document {
   chunks        Int?
   parsedPath    String?
   parsedPreview String?
+  ragDocumentId String?
   ocrEngine     String?
   errorMessage  String?
   createdAt     DateTime @default(now())

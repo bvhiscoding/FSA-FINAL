@@ -52,7 +52,7 @@ async def ingest_document(
 @app.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest) -> QueryResponse:
     try:
-        return get_rag_service().query(request.question, request.top_k)
+        return get_rag_service().query(request.question, request.top_k, request.ticker, request.include_structured)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -66,6 +66,21 @@ def list_documents() -> list[DocumentSummary]:
 def delete_document(document_id: str) -> dict:
     deleted = get_rag_service().vector_store.delete_document(document_id)
     return {"document_id": document_id, "deleted_chunks": deleted}
+
+
+@app.get("/stocks/{ticker}/summary")
+def get_stock_summary(ticker: str) -> dict:
+    summary = get_rag_service().stock_data.get_company_summary(ticker)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Stock not found")
+    return summary
+
+
+@app.get("/stocks/{ticker}/financials")
+def get_stock_financials(ticker: str, limit: int = 8) -> dict:
+    if not get_rag_service().stock_data.ticker_exists(ticker):
+        raise HTTPException(status_code=404, detail="Stock not found")
+    return get_rag_service().stock_data.get_latest_financials(ticker, limit)
 
 
 def main() -> None:

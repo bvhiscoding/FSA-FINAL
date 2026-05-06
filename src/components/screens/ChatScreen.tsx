@@ -258,6 +258,7 @@ export function ChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [models, setModels] = useState<any[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
+  const [ticker, setTicker] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -309,6 +310,7 @@ export function ChatScreen() {
       setActiveChatId(data.chat.id);
       setMessages(loadedMessages);
       setLatestSources(lastAssistant?.sources || []);
+      setLatestStructuredContext(null);
     } catch (err) {
       console.error("Failed to load chat", err);
     }
@@ -318,6 +320,7 @@ export function ChatScreen() {
     setActiveChatId(null);
     setMessages([]);
     setLatestSources([]);
+    setLatestStructuredContext(null);
   };
 
   const {
@@ -325,6 +328,7 @@ export function ChatScreen() {
     selectedCompany,
     selectedDocumentSet,
     setLatestSources,
+    setLatestStructuredContext,
   } = useAppStore();
 
   useEffect(() => {
@@ -358,6 +362,7 @@ export function ChatScreen() {
           chatId: activeChatId,
           company: selectedCompany,
           docSet: selectedDocumentSet,
+          ticker: ticker.trim().toUpperCase() || null,
           history: messages.map(m => ({ role: m.role, content: m.content }))
         }),
       });
@@ -365,7 +370,7 @@ export function ChatScreen() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to send message");
+        throw new Error(data.details || data.error || "Failed to send message");
       }
 
       const sources = data.sources || [];
@@ -379,6 +384,7 @@ export function ChatScreen() {
       };
       if (data.chat?.id) setActiveChatId(data.chat.id);
       setLatestSources(sources);
+      setLatestStructuredContext(data.structuredContext || null);
       setMessages((prev) => [...prev, aiMsg]);
       await fetchChatSessions();
     } catch (err) {
@@ -413,6 +419,16 @@ export function ChatScreen() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 rounded-lg border border-slate-200">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase">Ticker</span>
+            <input
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value.toUpperCase())}
+              placeholder="DHT"
+              maxLength={5}
+              className="w-14 text-[12px] font-semibold bg-transparent border-none outline-none text-slate-700 uppercase"
+            />
+          </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg border border-slate-200">
             <Sparkles size={14} className="text-blue-600" />
             <select 

@@ -10,6 +10,7 @@ from app.rag.embeddings import EmbeddingService
 from app.rag.vector_store import VectorStore
 from app.rag.generator import LLMGenerator
 from app.rag.reranker import RerankerService
+from app.rag.stock_data import StockDataService
 
 
 class RagService:
@@ -20,6 +21,7 @@ class RagService:
         self.vector_store = VectorStore(settings)
         self.generator = LLMGenerator(settings)
         self.reranker = RerankerService()
+        self.stock_data = StockDataService(settings)
 
     async def _emit_status(self, callback_url: str, payload: dict) -> None:
         if not callback_url:
@@ -86,18 +88,25 @@ class RagService:
             parsed_preview=parsed_preview,
         )
 
-    def query(self, question: str, top_k: int) -> QueryResponse:
-        # 1. Retrieve top 10 chunks from VectorDB
+    def query(self, question: str, top_k: int, ticker: str | None = None, include_structured: bool = True) -> QueryResponse:
+        structured_context = None
+        resolved_ticker = None
+        if include_structured:
+            structured_context, resolved_ticker = self.stock_data.build_structured_context(question, ticker)
+
         query_vector = self.embeddings.embed_query(question)
         retrieved_contexts = self.vector_store.query(query_vector, max(top_k * 2, 10))
-        
-        # 2. Rerank to get top_k
         best_contexts = self.reranker.rerank(question, retrieved_contexts, top_k)
-        
-        # 3. Generate answer using LLM
-        if not best_contexts:
-            answer = "No relevant context found in the documents."
+
+        if not best_contexts and not structured_context:
+            answer = "No relevant context found in the documents or structured financial database."
         else:
-            answer = self.generator.generate(question, best_contexts)
-            
-        return QueryResponse(question=question, answer=answer, contexts=best_contexts)
+            answer = self.generator.generate(question, best_contexts, structured_context)
+
+        return QueryResponse(
+            question=question,
+            answer=answer,
+            contexts=best_contexts,
+            structured_context=structured_context,
+            ticker=resolved_ticker,
+        )

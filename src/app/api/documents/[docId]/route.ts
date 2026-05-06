@@ -44,15 +44,32 @@ export async function DELETE(
     }
 
     const { docId } = await params;
-    
-    // In reality, delete the physical file from S3 / disk here as well
-    // And delete the embeddings from Vector DB (Qdrant)
+    const document = await prisma.document.findUnique({
+      where: { id: docId },
+    });
+
+    if (!document) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    }
+
+    let deletedRagChunks = 0;
+    if (document.ragDocumentId) {
+      const ragResponse = await fetch(`http://127.0.0.1:8000/documents/${document.ragDocumentId}`, {
+        method: "DELETE",
+      });
+      if (!ragResponse.ok) {
+        const details = await ragResponse.text();
+        return NextResponse.json({ error: "RAG delete failed", details }, { status: 502 });
+      }
+      const ragData = await ragResponse.json();
+      deletedRagChunks = ragData.deleted_chunks || 0;
+    }
 
     await prisma.document.delete({
       where: { id: docId },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deletedRagChunks });
   } catch (error) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

@@ -57,6 +57,8 @@ interface AppState {
   setAiModel: (model: string) => void;
   latestSources: RagSource[];
   setLatestSources: (sources: RagSource[]) => void;
+  latestStructuredContext: string | null;
+  setLatestStructuredContext: (context: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -82,4 +84,6 @@ export const useAppStore = create<AppState>((set) => ({
   setAiModel: (model) => set({ aiModel: model }),
   latestSources: [],
   setLatestSources: (sources) => set({ latestSources: sources }),
+  latestStructuredContext: null,
+  setLatestStructuredContext: (context) => set({ latestStructuredContext: context }),
 }));

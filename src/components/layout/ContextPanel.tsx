@@ -140,7 +140,7 @@ const tabs: { id: TabKey; label: string; icon: React.ElementType }[] = [
 ];
 
 export function ContextPanel() {
-  const { contextPanelOpen, setContextPanelOpen, latestSources } = useAppStore();
+  const { contextPanelOpen, setContextPanelOpen, latestSources, latestStructuredContext } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabKey>("sources");
   const [note, setNote] = useState(
     "• Cần xác minh nguyên nhân G&A tăng\n• Theo dõi tiến độ CIP Q1 2025\n• So sánh với đối thủ DCL, TRA",
@@ -202,18 +202,28 @@ export function ContextPanel() {
           <div className="p-3 space-y-2">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                {sources.length} nguồn được truy xuất
+                {sources.length} nguồn RAG · {latestStructuredContext ? "1 structured DB" : "0 structured DB"}
               </p>
               <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono">
                 cosine sim
               </span>
             </div>
+            {latestStructuredContext && (
+              <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-3">
+                <p className="text-[11px] font-semibold text-emerald-700 mb-2">
+                  Structured Financial Database
+                </p>
+                <pre className="whitespace-pre-wrap text-[10px] leading-relaxed text-emerald-900 font-mono max-h-56 overflow-y-auto">
+                  {latestStructuredContext}
+                </pre>
+              </div>
+            )}
             {sources.map((source, i) => (
               <SourceCard key={source.id} source={source} index={i} />
             ))}
-            {sources.length === 0 && (
+            {sources.length === 0 && !latestStructuredContext && (
               <p className="text-[11px] text-slate-400 bg-slate-50 border border-slate-100 rounded-lg p-3">
-                Chưa có context thật. Hãy gửi một câu hỏi trong Chat Analyst để xem 5 chunks được truy xuất.
+                Chưa có context thật. Hãy gửi một câu hỏi trong Chat Analyst để xem chunks RAG và dữ liệu structured DB được truy xuất.
               </p>
             )}
 

@@ -45,4 +45,18 @@ Query:
 Invoke-RestMethod http://127.0.0.1:8000/query -Method Post -ContentType "application/json" -Body '{"question":"Nội dung chính là gì?","top_k":5}'
 ```
 
+Structured stock query:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/query -Method Post -ContentType "application/json" -Body '{"question":"Phân tích DHT năm 2024","ticker":"DHT","top_k":5,"include_structured":true}'
+Invoke-RestMethod http://127.0.0.1:8000/stocks/DHT/summary
+Invoke-RestMethod 'http://127.0.0.1:8000/stocks/DHT/financials?limit=4'
+```
+
+Set the structured SQLite database path in `.env`:
+
+```env
+STOCKS_DB_PATH=C:\Users\Admin\Desktop\FSA\vietnam_stocks.db
+```
+
 `dotsocr` receives images only. PDFs are converted page-by-page to images before OCR. PDF pages are OCR'd concurrently; tune the number of simultaneous OCR requests with `OCR_CONCURRENCY` in `.env`.

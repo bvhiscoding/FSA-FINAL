@@ -39,6 +39,16 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 
 For OCR, install Tesseract and Poppler, then set their paths in `RAG-system\.env` if needed.
 
+## Structured stock database
+
+The app can use `C:\Users\Admin\Desktop\FSA\vietnam_stocks.db` in parallel with document RAG. Configure it in `RAG-system\.env`:
+
+```env
+STOCKS_DB_PATH=C:\Users\Admin\Desktop\FSA\vietnam_stocks.db
+```
+
+Use the ticker input in Chat Analyst, for example `DHT`, then ask: `Phân tích tình hình tài chính 2024`. The RAG service will combine OCR chunks from ChromaDB with structured SQLite financial tables from `vietnam_stocks.db`.
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
