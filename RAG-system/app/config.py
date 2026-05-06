@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://inspirative-separately-earlean.ngrok-free.dev/v1"
     llm_model: str = "qwen3.5:9b"
     ocr_engine: str = "auto"
+    ocr_concurrency: int = 5
     tesseract_cmd: str = ""
     poppler_path: str = ""
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"

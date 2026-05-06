@@ -2,21 +2,42 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies and prepare the local SQLite database:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```powershell
+npm install
+npx prisma generate
+npx prisma db push
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run the development server:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser.
+
+## Run the RAG service
+
+The RAG/OCR service is in `RAG-system`. Run it in a second terminal when document ingestion, OCR, or RAG APIs are needed:
+
+```powershell
+cd RAG-system
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e .
+copy .env.example .env
+python -m uvicorn app.main:app --reload
+```
+
+The service runs at [http://127.0.0.1:8000](http://127.0.0.1:8000). Check it with:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+```
+
+For OCR, install Tesseract and Poppler, then set their paths in `RAG-system\.env` if needed.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

@@ -45,4 +45,4 @@ Query:
 Invoke-RestMethod http://127.0.0.1:8000/query -Method Post -ContentType "application/json" -Body '{"question":"Nội dung chính là gì?","top_k":5}'
 ```
 
-`dotsocr` receives images only. PDFs are converted page-by-page to images before OCR.
+`dotsocr` receives images only. PDFs are converted page-by-page to images before OCR. PDF pages are OCR'd concurrently; tune the number of simultaneous OCR requests with `OCR_CONCURRENCY` in `.env`.

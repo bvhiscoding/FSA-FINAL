@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import io
 import json
@@ -91,17 +92,25 @@ async def _ocr_pdf(
 ) -> list[dict]:
     image_dir = settings.upload_dir / f"{path.stem}_pages_{uuid.uuid4().hex}"
     image_dir.mkdir(parents=True, exist_ok=True)
-    pages = []
+    page_images = []
 
     with fitz.open(path) as pdf_document:
         for page_index in range(pdf_document.page_count):
             image_path = image_dir / f"page_{page_index + 1:04d}.png"
             image = _render_pdf_page(pdf_document, page_index, dpi=200)
             image.save(image_path, "PNG")
-            text, engine_used = await ocr_service.extract_text(image_path, ocr_engine, language, markdown=True)
-            pages.append({"page": page_index + 1, "text": text, "ocr_engine": engine_used})
+            page_images.append((page_index + 1, image_path))
 
-    return pages
+    concurrency = max(1, settings.ocr_concurrency)
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def ocr_page(page_number: int, image_path: Path) -> dict:
+        async with semaphore:
+            text, engine_used = await ocr_service.extract_text(image_path, ocr_engine, language, markdown=True)
+            return {"page": page_number, "text": text, "ocr_engine": engine_used}
+
+    pages = await asyncio.gather(*(ocr_page(page_number, image_path) for page_number, image_path in page_images))
+    return sorted(pages, key=lambda page: page["page"])
 
 
 def _render_pdf_page(pdf_document, page_index: int, dpi: int) -> Image.Image:

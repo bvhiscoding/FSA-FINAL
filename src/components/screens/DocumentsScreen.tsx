@@ -339,6 +339,7 @@ export function DocumentsScreen() {
   );
 
   const indexed = filtered.filter((d) => d.status === "indexed").length;
+  const totalChunks = filtered.reduce((sum, doc) => sum + (doc.chunks || 0), 0);
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -384,7 +385,7 @@ export function DocumentsScreen() {
               value: documents.length - indexed,
               color: "text-amber-600",
             },
-            { label: "Tổng chunks", value: "0", color: "text-blue-600" },
+            { label: "Tổng chunks", value: totalChunks.toLocaleString(), color: "text-blue-600" },
           ].map((stat) => (
             <div key={stat.label} className="bg-slate-50 rounded-lg p-3">
               <div className={cn("text-xl font-bold tabular-nums", stat.color)}>

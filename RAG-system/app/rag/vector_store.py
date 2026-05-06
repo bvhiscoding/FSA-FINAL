@@ -18,7 +18,7 @@ class VectorStore:
     def upsert_chunks(self, chunks: list[tuple[str, ChunkMetadata]], embeddings: list[list[float]]) -> None:
         if not chunks:
             return
-        ids = [f"{metadata.document_id}:{metadata.chunk_index}" for _, metadata in chunks]
+        ids = [f"{metadata.document_id}:{metadata.page or 0}:{metadata.chunk_index}" for _, metadata in chunks]
         documents = [text for text, _ in chunks]
         metadatas = [_chroma_metadata(metadata) for _, metadata in chunks]
         self.collection.upsert(ids=ids, documents=documents, embeddings=embeddings, metadatas=metadatas)
